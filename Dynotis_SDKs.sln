@@ -3,28 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36717.8
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sdks", "sdks", "{ED32F9F0-AEA7-4672-A8FB-629968A14DD2}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "python", "python", "{02022035-6127-4E57-A3F3-7379A1E1731D}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "javascript", "javascript", "{4A44DBAC-6FCE-49A3-97E2-A90BECA542D7}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0282451B-8671-4375-BB87-0E9D76840C63}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{83D706F4-2CB5-4A72-807A-E5F828EDD8F6}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FD21985C-775E-4CB8-8A99-75D50D93750A}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{A13A8021-FFBC-4131-913C-6E38A2A76EBE}"
-EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "dynotis_python_sdk", "dynotis_python_sdk\dynotis_python_sdk.pyproj", "{7DED0159-6F3E-4803-A90F-1409FF231FCA}"
-EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "dynotis_javascript_sdk", "dynotis_javascript_sdk\dynotis_javascript_sdk.esproj", "{F6937EB5-405D-FD2D-9832-E53EC5676327}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Çözüm Öğeleri", "Çözüm Öğeleri", "{AC80F682-3D55-C8F8-4895-A4A9EDD49434}"
 	ProjectSection(SolutionItems) = preProject
 		Protos\DynotisAPI.proto = Protos\DynotisAPI.proto
+		README.md = README.md
 	EndProjectSection
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "dynotis_python_sdk", "dynotis_python_sdk\dynotis_python_sdk.pyproj", "{B264A896-1325-449D-86F1-2DEA02738EF2}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "dynotis_javascript_sdk", "dynotis_javascript_sdk\dynotis_javascript_sdk.esproj", "{F6937EB5-405D-FD2D-9832-E53EC5676327}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,8 +19,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7DED0159-6F3E-4803-A90F-1409FF231FCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7DED0159-6F3E-4803-A90F-1409FF231FCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B264A896-1325-449D-86F1-2DEA02738EF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B264A896-1325-449D-86F1-2DEA02738EF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F6937EB5-405D-FD2D-9832-E53EC5676327}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F6937EB5-405D-FD2D-9832-E53EC5676327}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F6937EB5-405D-FD2D-9832-E53EC5676327}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
@@ -43,16 +30,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{02022035-6127-4E57-A3F3-7379A1E1731D} = {ED32F9F0-AEA7-4672-A8FB-629968A14DD2}
-		{4A44DBAC-6FCE-49A3-97E2-A90BECA542D7} = {ED32F9F0-AEA7-4672-A8FB-629968A14DD2}
-		{0282451B-8671-4375-BB87-0E9D76840C63} = {02022035-6127-4E57-A3F3-7379A1E1731D}
-		{83D706F4-2CB5-4A72-807A-E5F828EDD8F6} = {02022035-6127-4E57-A3F3-7379A1E1731D}
-		{FD21985C-775E-4CB8-8A99-75D50D93750A} = {4A44DBAC-6FCE-49A3-97E2-A90BECA542D7}
-		{A13A8021-FFBC-4131-913C-6E38A2A76EBE} = {4A44DBAC-6FCE-49A3-97E2-A90BECA542D7}
-		{7DED0159-6F3E-4803-A90F-1409FF231FCA} = {0282451B-8671-4375-BB87-0E9D76840C63}
-		{F6937EB5-405D-FD2D-9832-E53EC5676327} = {FD21985C-775E-4CB8-8A99-75D50D93750A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8060CF88-8B68-416C-971F-A762E48AC51E}

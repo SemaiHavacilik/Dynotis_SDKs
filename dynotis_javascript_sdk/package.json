@@ -11,6 +11,11 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "eslint": "^9.39.2"
+    "eslint": "^9.39.2",
+    "grpc-tools": "^1.13.1"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.3",
+    "google-protobuf": "^4.0.1"
   }
 }
