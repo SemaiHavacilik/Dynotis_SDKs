@@ -1,13 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema targetNamespace="http://tempuri.org/XMLSchema.xsd"
-    elementFormDefault="qualified"
-    xmlns="http://tempuri.org/XMLSchema.xsd"
-    xmlns:mstns="http://tempuri.org/XMLSchema.xsd"
-    xmlns:xs="http://www.w3.org/2001/XMLSchema"
->
-
-
-🚀 Dynotis SDKs (Python & JavaScript)
+﻿🚀 Dynotis SDKs (Python & JavaScript)
 ![alt text](https://img.shields.io/badge/version-1.0.0-blue.svg)
 
 ![alt text](https://img.shields.io/badge/Python-3.8%2B-yellow.svg)
@@ -168,5 +159,4 @@ generated klasörünün oluştuğunu teyit edin.
 node build_sdk.js komutunu çalıştırın.
 npm install ile paketlerin yüklendiğinden emin olun.
 </details>
-Dynotis Technology © 2025
-</xs:schema>
+Dynotis Technology © 2025 Tüm hakları saklıdır.
