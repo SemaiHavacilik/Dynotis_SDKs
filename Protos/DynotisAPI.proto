@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+option csharp_namespace = "Dynotis.API.Protos";
+
+package dynotis;
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+service DynotisController {
+  
+  // --- Connection & Discovery ---
+
+  // Retrieves a list of all connected and discovered devices.
+  rpc GetDeviceList (Empty) returns (DeviceListResponse);
+  
+  // Activates a specific device (opens the communication port).
+  rpc ActivateDevice (DeviceRequest) returns (StatusResponse);
+  
+  // Deactivates a specific device (closes the communication port).
+  rpc DeactivateDevice (DeviceRequest) returns (StatusResponse);
+
+  // --- Motor Control ---
+
+  // Sets the PWM value for the ESC (Electronic Speed Controller).
+  rpc SetPWM (PwmRequest) returns (StatusResponse);
+  
+  // Software-locks the motor to prevent accidental spin-up.
+  rpc LockMotor (DeviceRequest) returns (StatusResponse);
+  
+  // Unlocks the motor, allowing PWM control.
+  rpc UnlockMotor (DeviceRequest) returns (StatusResponse);
+  
+  // Triggers an emergency stop: cuts power, locks the motor, and logs the event.
+  rpc EmergencyStop (DeviceRequest) returns (StatusResponse);
+
+  // --- Configuration ---
+
+  // Configures physical parameters like propeller diameter and motor resistance.
+  rpc SetEquipmentParameters (EquipmentParametersRequest) returns (StatusResponse);
+  
+  // Configures safety limits (Max Current, Max RPM, etc.).
+  rpc SetLimitSettings (LimitSettingsRequest) returns (StatusResponse);
+
+  // --- Operations ---
+
+  // Tares (zeros) a specific sensor to compensate for drift.
+  rpc TareSensor (TareRequest) returns (StatusResponse);
+
+  // --- Data & Telemetry ---
+
+  // Retrieves a comprehensive snapshot of sensor data and theoretical calculations.
+  rpc GetTelemetryStream (DeviceRequest) returns (stream TelemetryResponse);
+
+  // --- Data Logging ---
+
+  // Starts recording data to a local file.
+  rpc StartLogging (LogRequest) returns (StatusResponse);
+  
+  // Stops the current recording session.
+  rpc StopLogging (DeviceRequest) returns (StatusResponse);
+}
+
+// ============================================================================
+// COMMON MESSAGES
+// ============================================================================
+
+message Empty {}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeviceRequest {
+  // Unique identifier for the device (e.g., "COM3", "192.168.1.50").
+  string device_identifier = 1;
+}
+
+// ============================================================================
+// DEVICE DISCOVERY MESSAGES
+// ============================================================================
+
+message DeviceListResponse {
+  repeated DeviceInfo devices = 1;
+}
+
+message DeviceInfo {
+  string identifier = 1;       // Connection ID
+  string name = 2;             // Device Name (e.g., Dynotis A)
+  string model = 3;            // Hardware Model (e.g., ST-151)
+  string firmware_version = 4; // Firmware Version
+  string product_id = 5;       // Serial Number
+  bool is_active = 6;          // Is the connection currently open?
+  bool is_safety_locked = 7;   // Is the motor locked?
+  bool is_balancer_enabled = 8;// Does it have the dynamic balancer license?
+}
+
+// ============================================================================
+// CONTROL & CONFIGURATION MESSAGES
+// ============================================================================
+
+message PwmRequest {
+  string device_identifier = 1;
+  double pwm_value = 2; // Pulse width in microseconds (typically 800-2200).
+}
+
+message EquipmentParametersRequest {
+  string device_identifier = 1;
+  EquipmentParameters parameters = 2;
+}
+
+message EquipmentParameters {
+  double propeller_diameter_inch = 1;	// Inches
+  double motor_resistance_mohm = 2;		// Milli-Ohms
+  double no_load_current_a = 3;			// Amperes
+}
+
+message LimitSettingsRequest {
+  string device_identifier = 1;
+  LimitSettings settings = 2;
+}
+
+message LimitSettings {
+  bool is_enabled = 1;              // Master switch for the limit system.
+  
+  double max_current_a = 2;
+  bool enable_max_current = 3;
+
+  double min_voltage_v = 4;
+  bool enable_min_voltage = 5;
+
+  double max_rpm = 6;
+  bool enable_max_rpm = 7;
+
+  double max_motor_temp_c = 8;
+  bool enable_max_motor_temp = 9;
+
+  double max_thrust_gf = 10;
+  bool enable_max_thrust = 11;
+
+  double max_torque_nmm = 12;
+  bool enable_max_torque = 13;
+}
+
+message TareRequest {
+  string device_identifier = 1;
+  SensorType sensor_type = 2;
+}
+
+enum SensorType {
+  SENSOR_THRUST = 0;
+  SENSOR_TORQUE = 1;
+  SENSOR_CURRENT = 2;
+  SENSOR_VOLTAGE = 3; 
+  SENSOR_ACCELEROMETER = 4; // Tares X, Y, and Z axes.
+}
+
+message LogRequest {
+  string device_identifier = 1;
+  string session_name = 2;
+  int32 sampling_rate_hz = 3; 
+  string test_notes = 4; 
+}
+
+// ============================================================================
+// TELEMETRY MESSAGES
+// ============================================================================
+
+message TelemetryResponse {
+  double timestamp_s = 1;
+  
+  // Raw Sensor Data (Hardware readings)
+  SensorData sensors = 2;
+  
+  // Calculated Data (Physics & Efficiency)
+  TheoreticalData theoretical = 3;
+  
+  // Environmental Data
+  EnvironmentData environment = 4;
+
+  // System Status
+  bool is_limit_triggered = 5;
+  double esc_pwm_readout = 6;
+}
+
+message SensorData {
+  double thrust_gf = 1;       // Gram-Force
+  double torque_nmm = 2;      // Newton-Millimeter
+  double voltage_v = 3;       // Volts
+  double current_a = 4;       // Amperes
+  double rpm = 5;             // Revolutions Per Minute
+  double motor_temp_c = 6;    // Celsius
+  double esc_temp_c = 7;      // Celsius
+  
+  // Vibration / Accelerometer
+  double vibration_magnitude_g = 8;
+  double accel_x_g = 9;
+  double accel_y_g = 10;
+  double accel_z_g = 11;
+
+  // Wind (if available)
+  double wind_speed_ms = 12;
+  double wind_direction_deg = 13;
+}
+
+message EnvironmentData {
+  double ambient_temp_c = 1;
+  double pressure_pa = 2;   
+}
+
+message TheoreticalData {
+  // Power
+  double electrical_power_w = 1;
+  double mechanical_power_w = 2;
+  double hover_ideal_power_w = 3;
+
+  // Efficiency (Percentages 0-100)
+  double motor_efficiency_percent = 4;
+  double propeller_efficiency_percent = 5; // Propulsive efficiency
+  double system_efficiency_percent = 6;    // Motor * ESC
+  double electrical_to_thrust_hover_percent = 7;
+
+  // Performance Metrics
+  double thrust_per_watt_gf_w = 8;         // System Efficiency 2
+  double figure_of_merit_percent = 9;      // FOM
+  
+  // Aerodynamics
+  double air_density_kg_m3 = 10;
+  double tip_speed_ms = 11;
+  double mach_tip = 12;
+
+  // Coefficients
+  double coefficient_thrust_ct = 13;
+  double coefficient_torque_cq = 14;
+  double coefficient_power_cp = 15;
+  double advance_ratio_j = 16;
+}
