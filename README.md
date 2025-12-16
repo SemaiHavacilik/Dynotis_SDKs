@@ -1,6 +1,16 @@
 <div align="center">
+  
+<img src="https://dynotis.semai.com.tr/wp-content/uploads/2024/04/IMG_8400-scaled.jpg" align="left" width="200" style="margin-right: 20px; margin-top: 20px;" alt="Dynotis Left Setup" />
 
-# 🚀 Dynotis SDKs (Python & JavaScript)
+<img src="https://dynotis.semai.com.tr/wp-content/uploads/2024/04/IMG_8427-scaled.jpg" align="right" width="200" style="margin-left: 20px; margin-top: 10px;" alt="Dynotis Right Setup" />
+
+<p align="center">
+  <img src="https://dynotis.semai.com.tr/wp-content/uploads/2024/03/dynotis_logo.svg"
+       alt="Dynotis"
+       width="240" />
+</p>
+
+# Dynotis SDKs (Python & JavaScript)
 
 **Control Dynotis devices and stream live telemetry from your external applications.**
 
