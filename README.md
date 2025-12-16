@@ -10,7 +10,11 @@
        width="240" />
 </p>
 
-# Dynotis SDKs (Python & JavaScript)
+# Dynotis SDKs 
+
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.herokuapp.com/?font=Fira+Code&pause=1000&color=2196F3&center=true&vCenter=true&width=435&lines=Python+%26+JavaScript+Control;Advanced+Telemetry+Stream" alt="Typing SVG" />
+</a>
 
 **Control Dynotis devices and stream live telemetry from your external applications.**
 
