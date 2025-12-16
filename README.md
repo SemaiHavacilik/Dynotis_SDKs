@@ -21,14 +21,14 @@ These SDKs connect to that server to:
 - Activate/deactivate a device connection
 - Control motor PWM (with software safety lock)
 - Configure limits & equipment parameters
-- Stream telemetry at a fixed rate (e.g., 100 Hz)
+- Stream telemetry at a fixed rate (e.g., 1000 Hz)
 
-💡 **Important design detail:** The gRPC server injects **existing singleton services** from the WPF app (shared RAM/state), meaning the UI and API work on the same live device objects.
+💡 **Important design detail:** The gRPC server injects **existing singleton services** from the UI app (shared RAM/state), meaning the UI and API work on the same live device objects.
 
 ---
 
 ### ✅ Architecture
-*   **Architecture:** Dynotis Desktop (WPF) runs as a **gRPC Server** (Kestrel / HTTP2)  
+*   **Architecture:** Dynotis Desktop runs as a **gRPC Server** (Kestrel / HTTP2)  
 *   **Client:** SDKs act as gRPC Clients.
 *   **Endpoint:** Default is `localhost:50051` (HTTP/2).
 
@@ -73,7 +73,7 @@ These SDKs connect to that server to:
 
 ## 🧠 How It Works
 
-### Server Side (Dynotis Desktop / WPF)
+### Server Side (Dynotis Desktop)
 
 - Uses **Kestrel** configured for **HTTP/2** (required for gRPC)
 - Maps the gRPC service `DynotisAPIService`
@@ -95,8 +95,8 @@ These SDKs connect to that server to:
 
 ## 🛠 Requirements
 
-### ✅ Server (Dynotis Desktop / WPF)
-- Dynotis Desktop app must be running
+### ✅ Server (Dynotis Desktop)
+- **Dynotis Desktop app must be running**
 - gRPC server must be **Online** in the UI (status/footer)
 - Default port: `50051` (HTTP/2)
 
@@ -140,7 +140,7 @@ Dynotis_SDKs/
 ```
 
 ### ⚡ Quick Start SDK
-*   Start Dynotis Desktop (WPF).
+*   Start Dynotis Desktop.
 *   Confirm API Status is Online ✅.
 *   Run SDK build scripts (only needed if .proto changed)
 *   Run an example test scenario to validate end-to-end communication
@@ -310,7 +310,7 @@ The full gRPC contract is defined in:
 
 ## ⚙️ Telemetry Stream Notes
 
- * Typical stream rate: 50 Hz (PeriodicTimer(20ms))
+ * Typical stream rate: 1000 Hz (PeriodicTimer(1ms))
  * Stream message includes:
    - sensors: thrust/torque/voltage/current/rpm/temps/accel/wind
    - theoretical: power, efficiencies, FOM, coefficients, etc.
