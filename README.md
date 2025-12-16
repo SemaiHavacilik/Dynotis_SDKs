@@ -181,6 +181,7 @@ dynotis_generate_python_sdk.bat
 ```
 
 ✅ This generates files under dynotis_python_sdk/generated/
+
 ✅ It also fixes the common relative-import issue in DynotisAPI_pb2_grpc.py.
 
 ## Run Python Demo Scenario
@@ -439,4 +440,8 @@ class Program
 }
 ```
 
- ## License: **Semai Aviation R&D Advanced Engineering © 2025**
+<div align="center">
+
+### Semai Aviation R&D Advanced Engineering © 2025
+
+</div>
