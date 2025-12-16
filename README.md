@@ -1,22 +1,47 @@
+<div align="center">
+
 # 🚀 Dynotis SDKs (Python & JavaScript)
 
-Dynotis SDKs provide **Python** and **JavaScript (Node.js)** client libraries to control Dynotis dynamometer devices and stream live telemetry from external applications.
+**Control Dynotis devices and stream live telemetry from your external applications.**
 
-✅ Architecture: **Dynotis Desktop (WPF) = gRPC Server**  
-✅ SDKs act as **gRPC Clients**  
-✅ Default endpoint: `localhost:50051` (HTTP/2)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-16%2B-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![gRPC](https://img.shields.io/badge/Protocol-gRPC-red?logo=google-cloud&logoColor=white)](https://grpc.io/)
 
-> ⚠️ **Safety Warning:** Calling `UnlockMotor` + `SetPWM` can spin the motor. Always secure the test rig and follow your lab safety procedures.
+</div>
+
+---
+
+## 📖 Overview
+
+Dynotis SDKs provide **Python** and **JavaScript (Node.js)** client libraries to interact with the Dynotis ecosystem.
+
+The **Dynotis Desktop (WPF)** application runs an embedded **gRPC server** (Kestrel/HTTP2). These SDKs connect to this server to:
+1.  Discover devices (Serial / Wi-Fi).
+2.  Control motor PWM (with safety locks).
+3.  Configure limits & equipment parameters.
+4.  Stream telemetry at high rates (e.g., 50 Hz).
+
+### ✅ Architecture
+*   **Architecture:** Dynotis Desktop (WPF) runs as a **gRPC Server** (Kestrel / HTTP2)  
+*   **Client:** SDKs act as gRPC Clients.
+*   **Endpoint:** Default is `localhost:50051` (HTTP/2).
+
+> ⚠️ **SAFETY WARNING**
+>
+> Calling `UnlockMotor` + `SetPWM` **can spin the motor**.
+> Always secure the test rig and follow your lab safety procedures before running any code.
 
 ---
 
 ## 📌 Table of Contents
 
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [Requirements](#-requirements)
-- [Repository Structure](#-repository-structure)
-- [Quick Start](#-quick-start)
+- [🔎 Overview](#-overview)
+- [✨ Key Features](#-key-features)
+- [🧠 How It Works](#-how-it-works)
+- [🛠 Requirements](#-requirements)
+- [📂 Repository Structure](#-repository-structure)
+- [⚡ Quick Start SDK](#-quick-start-sdk)
 - [🐍 Python SDK](#-python-sdk)
 - [🟨 JavaScript SDK](#-javascript-sdk)
 - [🧩 Proto & API Reference](#-proto--api-reference)
@@ -26,49 +51,79 @@ Dynotis SDKs provide **Python** and **JavaScript (Node.js)** client libraries to
 - [📄 License](#-license)
 
 ---
+---
 
 ## 🔎 Overview
 
-The Dynotis Desktop application (WPF) runs an embedded **gRPC server** (Kestrel/HTTP2).  
-The SDKs connect to this server to:
+The **Dynotis Desktop application (WPF)** hosts an embedded **gRPC server** (HTTP/2).  
+These SDKs connect to that server to:
 
 - Discover devices (Serial / Wi-Fi)
 - Activate/deactivate a device connection
-- Control motor PWM (with safety lock)
+- Control motor PWM (with software safety lock)
 - Configure limits & equipment parameters
 - Stream telemetry at a fixed rate (e.g., 50 Hz)
 
-A key design goal is that the gRPC service **uses the same live singleton services** as the WPF UI (shared runtime state).
+💡 **Important design detail:** The gRPC server injects **existing singleton services** from the WPF app (shared RAM/state), meaning the UI and API work on the same live device objects.
 
 ---
 
 ## ✨ Key Features
 
-✅ Device discovery (`GetDeviceList`)  
-✅ Device activation/deactivation  
-✅ Motor PWM control (`SetPWM`)  
-✅ Safety lock/unlock (`LockMotor` / `UnlockMotor`)  
-✅ Emergency stop (`EmergencyStop`)  
-✅ Sensor tare (`TareSensor`)  
-✅ Limit configuration (`SetLimitSettings`)  
-✅ Live telemetry streaming (`GetTelemetryStream`)
+| Category | What you can do | Main Methods |
+| :--- | :--- | :--- |
+| 🔍 **Discovery** | Connected devices are found automatically and listed with statuses. | `GetDeviceList` |
+| 🔌 **Session** | Open/close the communication channel to a specific device. | `ActivateDevice`, `DeactivateDevice` |
+| 🎮 **Control** | Drive the ESC with microsecond PWM commands (controlled & explicit). | `SetPWM` |
+| 🔒 **Safety** | Prevent accidental spin-up, unlock intentionally, or stop immediately. | `LockMotor`, `UnlockMotor`, `EmergencyStop` |
+| ⚖️ **Calibration** | Zero (tare) sensors for reliable measurements before tests. | `TareSensor` |
+| ⚙️ **Limits & Protection** | Configure safety limits (current/temp/RPM/etc.) and enforce them during operation. | `SetLimitSettings` |
+| 📡 **Telemetry** | Stream live data (Thrust, Torque, RPM, Voltage, Current, Temps, etc.). | `GetTelemetryStream` |
+
+---
+
+## 🧠 How It Works
+
+### Server Side (Dynotis Desktop / WPF)
+
+- Uses **Kestrel** configured for **HTTP/2** (required for gRPC)
+- Maps the gRPC service `DynotisAPIService`
+- Injects live services like:
+  - `IDevicesManager`
+  - `ILogService`
+  - `IBalancerService`
+  - `IAnalysisDashboardManager`
+
+### Client Side (SDKs)
+
+- Python and Node.js clients call gRPC methods defined in:
+  - `Protos/DynotisAPI.proto`
+- Generated code lives under:
+  - `dynotis_python_sdk/generated/`
+  - `dynotis_javascript_sdk/generated/`
 
 ---
 
 ## 🛠 Requirements
 
-### Server (Dynotis Desktop / WPF)
+### ✅ Server (Dynotis Desktop / WPF)
 - Dynotis Desktop app must be running
-- gRPC server must be **Online** in the UI footer/status bar
+- gRPC server must be **Online** in the UI (status/footer)
 - Default port: `50051` (HTTP/2)
 
-### Python SDK
+### 🐍 Python SDK
 - Python **3.8+**
-- Dependencies: `grpcio`, `grpcio-tools`, `protobuf`
+- Dependencies:
+  - `grpcio`
+  - `grpcio-tools`
+  - `protobuf`
 
-### JavaScript SDK (Node.js)
+### 🟨 JavaScript SDK (Node.js)
 - Node.js **16+**
-- Dependencies: `@grpc/grpc-js`, `google-protobuf`, `grpc-tools`
+- Dependencies:
+  - `@grpc/grpc-js`
+  - `google-protobuf`
+  - `grpc-tools`
 
 ---
 
@@ -85,55 +140,57 @@ Dynotis_SDKs/
 │   ├── build_sdk.js
 │   ├── client.js
 │   ├── index.js
-│   ├── dynotis_generate_javascript_sdk.bat
-│   └── package.json
+│   └── dynotis_generate_javascript_sdk.bat
 └── dynotis_python_sdk/
     ├── examples/
     │   └── full_test_scenario.py
     ├── generated/
     ├── build_sdk.py
     ├── client.py
-    ├── dynotis_generate_python_sdk.bat
-    └── requirements.txt
-⚡ Quick Start
-Start Dynotis Desktop (WPF)
+    └── dynotis_generate_python_sdk.bat
+```
 
-Confirm API Status = Online ✅
+### ⚡ Quick Start SDK
+*   Start Dynotis Desktop (WPF).
+*   Confirm API Status is Online ✅.
+*   Run SDK build scripts (only needed if .proto changed)
+*   Run an example test scenario to validate end-to-end communication
 
-Run SDK build scripts (only needed after .proto changes)
-
-Execute an example scenario to verify end-to-end operation
-
-🐍 Python SDK
-1) Install Dependencies
-bash
-Kodu kopyala
+---
+### 🐍 Python SDK
+---
+## Install Python
+```text
 cd dynotis_python_sdk
+
+# If you have requirements.txt
 pip install -r requirements.txt
-If requirements.txt is missing:
 
-bash
-Kodu kopyala
+# If not:
 pip install grpcio grpcio-tools protobuf
-2) Generate Python gRPC Code
-bash
-Kodu kopyala
+
+```
+## Generate Python SDK (from .proto)
+```text
+cd dynotis_python_sdk
 python build_sdk.py
-Windows alternative:
-
-bat
-Kodu kopyala
+```
+## Windows alternative:
+```text
 dynotis_generate_python_sdk.bat
-This process generates code under dynotis_python_sdk/generated/
-and applies a common fix for Python relative imports.
+```
 
-3) Run the Demo Scenario
-bash
-Kodu kopyala
+✅ This generates files under dynotis_python_sdk/generated/
+✅ It also fixes the common relative-import issue in DynotisAPI_pb2_grpc.py.
+
+## Run Python Demo Scenario
+```text
+cd dynotis_python_sdk
 python examples/full_test_scenario.py
-4) Minimal Example
-python
-Kodu kopyala
+```
+
+## Minimal Python Usage Example
+```python
 from client import DynotisClient
 from generated import DynotisAPI_pb2
 
@@ -145,42 +202,49 @@ if not devices:
 
 dev_id = devices[0].identifier
 
+# Activate + unlock
 client.activate_device(dev_id)
 client.unlock_motor(dev_id)
 
-client.set_pwm(dev_id, 1200.0)
-
-stream = client.get_telemetry_stream(dev_id)
-for data in stream:
-    print(f"RPM: {data.sensors.rpm:.0f} | Thrust: {data.sensors.thrust_gf:.1f} g")
-5) Limits + Tare Example
-python
-Kodu kopyala
+# Optional: set safety limits + tare thrust
 client.set_limits(dev_id, max_current=40.0, max_temp=80.0)
 client.tare_sensor(dev_id, DynotisAPI_pb2.SensorType.SENSOR_THRUST)
-🟨 JavaScript SDK
-1) Install Dependencies
-bash
-Kodu kopyala
+
+# Send PWM
+client.set_pwm(dev_id, 1200.0)
+
+# Telemetry stream
+stream = client.get_telemetry_stream(dev_id)
+for msg in stream:
+    print(f"RPM={msg.sensors.rpm:6.0f} | Thrust={msg.sensors.thrust_gf:8.1f} g", end="\r")
+
+```
+
+---
+### 🟨 JavaScript SDK (Node.js)
+---
+## Install JavaScript
+```text
 cd dynotis_javascript_sdk
 npm install
-2) Generate JS gRPC Code
-bash
-Kodu kopyala
+```
+## Generate JavaScript SDK (from .proto)
+```text
+cd dynotis_javascript_sdk
 node build_sdk.js
-Windows alternative:
-
-bat
-Kodu kopyala
+```
+## Windows alternative:
+```text
 dynotis_generate_javascript_sdk.bat
-3) Run the Demo Scenario
-bash
-Kodu kopyala
+```
+## Run JavaScript Demo Scenario
+```text
+cd dynotis_javascript_sdk
 node examples/full_test_scenario.js
-4) Minimal Example
-js
-Kodu kopyala
-const { DynotisClient } = require("./client");
+```
+## Minimal JavaScript Usage Example
+```javascript
+const { DynotisClient, messages } = require("./client");
 
 async function main() {
   const client = new DynotisClient("localhost:50051");
@@ -193,144 +257,154 @@ async function main() {
   const devId = list.devicesList[0].identifier;
 
   await client.activateDevice(devId);
-  await client.unlockMotor(devId);
+  await client.setLimits(devId, { maxCurrent: 40.0, maxTemp: 80.0 });
+  await client.tareSensor(devId, messages.SensorType.SENSOR_THRUST);
 
+  await client.unlockMotor(devId);
   await client.setPWM(devId, 1200);
 
   const stream = client.getTelemetryStream(devId);
-  stream.on("data", (data) => {
-    const s = data.getSensors();
-    console.log(`RPM=${s.getRpm().toFixed(0)} Thrust=${s.getThrustGf().toFixed(1)}g`);
+
+  stream.on("data", (msg) => {
+    const s = msg.getSensors();
+    process.stdout.write(
+      `RPM=${s.getRpm().toFixed(0).padStart(6)} | ` +
+      `Thrust=${s.getThrustGf().toFixed(1).padStart(8)} g | ` +
+      `Current=${s.getCurrentA().toFixed(1).padStart(5)} A\r`
+    );
   });
 
   stream.on("error", (err) => {
-    // gRPC "CANCELLED" is normal when you cancel the stream
-    if (err.code !== 1) console.error(err);
+    // gRPC CANCELLED is normal when client cancels stream
+    if (err.code !== 1) console.error("\nStream Error:", err);
   });
+
+  // stop after 10 seconds (demo)
+  setTimeout(async () => {
+    stream.cancel();
+
+    await client.setPWM(devId, 1000);
+    await client.lockMotor(devId);
+    await client.deactivateDevice(devId);
+
+    client.close();
+    console.log("\nDone.");
+  }, 10_000);
 }
 
 main().catch(console.error);
-🧩 Proto & API Reference
-The full contract is defined in:
+```
 
-Protos/DynotisAPI.proto
+### 🧩 Proto & API Reference
 
-Service: DynotisController
-RPC	Description
-GetDeviceList(Empty)	Returns all connected/discovered devices with status
-ActivateDevice(DeviceRequest)	Opens communication for a specific device
-DeactivateDevice(DeviceRequest)	Closes communication for a device
-SetPWM(PwmRequest)	Sends PWM value to ESC (typically 800–2200 µs)
-LockMotor(DeviceRequest)	Software-locks the motor
-UnlockMotor(DeviceRequest)	Unlocks motor for PWM control
-EmergencyStop(DeviceRequest)	Immediately stops motor, locks, logs event
-SetEquipmentParameters(EquipmentParametersRequest)	Sets prop diameter, motor resistance, etc.
-SetLimitSettings(LimitSettingsRequest)	Enables/configures safety limits
-TareSensor(TareRequest)	Tares thrust/torque/current/accelerometer
-GetTelemetryStream(DeviceRequest)	Server-side streaming telemetry
-StartLogging(LogRequest)	Starts logging (currently requires DI wiring)
-StopLogging(DeviceRequest)	Stops logging (currently requires DI wiring)
+The full gRPC contract is defined in:
 
-🧩 Note: StartLogging/StopLogging currently return a message indicating that DataLoggerManager must be registered in the DI container (singleton) to support logging through the API.
+- **Proto file:** `Protos/DynotisAPI.proto`
+- **Service:** `DynotisController`
 
-⚙️ Telemetry Stream Notes
-Server example rate: 50 Hz (PeriodicTimer(20ms))
+| RPC Method | Description |
+| :--- | :--- |
+| `GetDeviceList` | Returns all connected/discovered devices with status. |
+| `ActivateDevice` | Opens communication for a specific device. |
+| `DeactivateDevice` | Closes communication for a device. |
+| `SetPWM` | Sends PWM value to ESC (typically 800–2200 µs). |
+| `LockMotor` | Software-locks the motor (prevents spin). |
+| `UnlockMotor` | Unlocks motor for PWM control. |
+| `EmergencyStop` | Immediately stops motor, locks it, and logs event. |
+| `SetEquipmentParameters` | Sets prop diameter, motor resistance, etc. |
+| `SetLimitSettings` | Enables/configures safety limits (Max Current/Temp). |
+| `TareSensor` | Tares thrust, torque, current, or accelerometer. |
+| `GetTelemetryStream` | Server-side streaming telemetry (50Hz default). |
+| `StartLogging` | Starts logging (Requires DI wiring on server). |
+| `StopLogging` | Stops logging (Requires DI wiring on server). |
 
-Stream message includes:
+> **🧩 Logging Note:** StartLogging/StopLogging currently require DataLoggerManager to be registered in the DI container as a **singleton** and injected into DynotisAPIService.
 
-sensors: thrust/torque/voltage/current/rpm/temps/accel/wind
 
-theoretical: power, efficiencies, FOM, coefficients, etc.
+### ⚙️ Telemetry Stream Notes
+ * Typical stream rate: 50 Hz (PeriodicTimer(20ms))
+ * Stream message includes:
+   - sensors: thrust/torque/voltage/current/rpm/temps/accel/wind
+   - theoretical: power, efficiencies, FOM, coefficients, etc.
+   - environment: ambient temperature, pressure
 
-environment: ambient temperature, pressure
+✅ Expected behavior:
+ * If the client cancels the stream, server may throw OperationCanceledException (*normal*).
 
-Expected behavior:
-
-If the client cancels the stream, the server typically catches an OperationCanceledException (normal)
-
-🧯 Troubleshooting
+### 🧯 Troubleshooting
 ❌ UNAVAILABLE: failed to connect to all addresses
 ✅ Checklist:
+* Dynotis Desktop running?
+* UI shows **API Online?**
+* Correct endpoint: localhost:50051
+* Firewall blocking port 50051?
 
-Dynotis Desktop running?
+❌ **HTTP/2 / protocol errors**
+* gRPC requires HTTP/2
+* Server must listen with HttpProtocols.Http2 (Kestrel)
 
-UI shows API Online?
+❌ **Python**: *ImportError* **in generated code**
 
-Correct endpoint/port (localhost:50051)?
-
-Firewall blocking 50051?
-
-❌ HTTP/2 / protocol errors
-gRPC requires HTTP/2
-
-Server must listen with HttpProtocols.Http2 (Kestrel)
-
-❌ Python ImportError in generated code
-Run:
-
-bash
-Kodu kopyala
-python build_sdk.py
-Ensure generated/__init__.py exists
-
-The build script applies a common fix:
-import DynotisAPI_pb2 → from . import DynotisAPI_pb2
-
-❌ JS Cannot find module ./generated/...
-Run:
-
-bash
-Kodu kopyala
-npm install
-node build_sdk.js
-Confirm generated/ exists
-
-⚠️ Device list works, telemetry is always zero
-Ensure the device is activated
-
-Ensure the device is actually streaming sensor data in its current mode
-
-Try: Activate → wait ~1s → start stream
-
-🧪 Development & Contribution
-When .proto changes
-Update Protos/DynotisAPI.proto
-
-Regenerate SDK code:
-
-Python
-
-bash
-Kodu kopyala
+### Run:
+```text
 cd dynotis_python_sdk
 python build_sdk.py
-JavaScript
+```
+### Ensure:
+ * generated/__init__.py exists
+ * DynotisAPI_pb2_grpc.py contains: from . import DynotisAPI_pb2
 
-bash
-Kodu kopyala
+❌ **JavaScript:** Cannot find module ./generated/...
+
+### Run:
+```text
+cd dynotis_javascript_sdk
+npm install
+node build_sdk.js
+```
+### Confirm:
+ * *generated/* folder exists and contains **_pb.js* files
+
+**⚠️ Device list works but telemetry is always zero**
+ * Ensure device is **activated**
+ * Ensure the device is streaming sensor data in current mode
+ * Try: Activate → wait ~1s → start stream
+
+---
+### 🧪 Development & Contribution
+**When** .proto **changes**
+
+ **1**.Update Protos/DynotisAPI.proto
+ 
+ **2**.Regenerate SDKs:
+
+ ### Python:
+```text
+cd dynotis_python_sdk
+python build_sdk.py
+```
+ ### JavaScript:
+```text
 cd dynotis_javascript_sdk
 node build_sdk.js
-Branch naming suggestion
-feature/<name>
+```
+ ### Branch naming:
+ * feature/<name>
 
-fix/<name>
+ * fix/<name>
 
-chore/<name>
+ * chore/<name>
 
-Notes on logging support
-To enable StartLogging/StopLogging through the API:
+ ### Logging (API support):
+To support *StartLogging/StopLogging*:
 
-Move DataLoggerManager into the DI container
+ * Register *DataLoggerManager* in DI (*AddSingleton*)
 
-Register as a singleton
+ * Inject into *DynotisAPIService*
 
-Inject into DynotisAPIService
 
-(Optional) ✅ C# gRPC Client Example
-Even though this repo ships Python/JS SDKs, here’s a minimal C# example for quick testing.
-
-csharp
-Kodu kopyala
+## ✅ Optional: C# gRPC Client Example
+```C#
 using System;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
@@ -363,22 +437,6 @@ class Program
         }
     }
 }
-📄 License
-TBD (e.g., MIT / Proprietary).
-Add a LICENSE file and update this section accordingly.
+```
 
-🧾 Support
-Please open a GitHub Issue with:
-
-OS + Dynotis Desktop version
-
-SDK version / commit hash
-
-Steps to reproduce
-
-Logs / error output
-
-Dynotis Technology © 2025
-
-Kodu kopyala
-
+ ## License: **Semai Aviation R&D Advanced Engineering © 2025**
