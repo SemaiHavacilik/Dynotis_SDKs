@@ -14,13 +14,18 @@
 
 ## 📖 Overview
 
-Dynotis SDKs provide **Python** and **JavaScript (Node.js)** client libraries to interact with the Dynotis ecosystem.
+The **Dynotis Desktop application** hosts an embedded **gRPC server** (HTTP/2).  
+These SDKs connect to that server to:
 
-The **Dynotis Desktop (WPF)** application runs an embedded **gRPC server** (Kestrel/HTTP2). These SDKs connect to this server to:
-1.  Discover devices (Serial / Wi-Fi).
-2.  Control motor PWM (with safety locks).
-3.  Configure limits & equipment parameters.
-4.  Stream telemetry at high rates (e.g., 50 Hz).
+- Discover devices (Serial / Wi-Fi)
+- Activate/deactivate a device connection
+- Control motor PWM (with software safety lock)
+- Configure limits & equipment parameters
+- Stream telemetry at a fixed rate (e.g., 50 Hz)
+
+💡 **Important design detail:** The gRPC server injects **existing singleton services** from the WPF app (shared RAM/state), meaning the UI and API work on the same live device objects.
+
+---
 
 ### ✅ Architecture
 *   **Architecture:** Dynotis Desktop (WPF) runs as a **gRPC Server** (Kestrel / HTTP2)  
@@ -36,7 +41,7 @@ The **Dynotis Desktop (WPF)** application runs an embedded **gRPC server** (Kest
 
 ## 📌 Table of Contents
 
-- [🔎 Overview](#-overview)
+- [📖 Overview](#-overview)
 - [✨ Key Features](#-key-features)
 - [🧠 How It Works](#-how-it-works)
 - [🛠 Requirements](#-requirements)
@@ -49,22 +54,6 @@ The **Dynotis Desktop (WPF)** application runs an embedded **gRPC server** (Kest
 - [🧯 Troubleshooting](#-troubleshooting)
 - [🧪 Development & Contribution](#-development--contribution)
 - [📄 License](#-license)
-
----
----
-
-## 🔎 Overview
-
-The **Dynotis Desktop application (WPF)** hosts an embedded **gRPC server** (HTTP/2).  
-These SDKs connect to that server to:
-
-- Discover devices (Serial / Wi-Fi)
-- Activate/deactivate a device connection
-- Control motor PWM (with software safety lock)
-- Configure limits & equipment parameters
-- Stream telemetry at a fixed rate (e.g., 50 Hz)
-
-💡 **Important design detail:** The gRPC server injects **existing singleton services** from the WPF app (shared RAM/state), meaning the UI and API work on the same live device objects.
 
 ---
 
@@ -156,10 +145,9 @@ Dynotis_SDKs/
 *   Run SDK build scripts (only needed if .proto changed)
 *   Run an example test scenario to validate end-to-end communication
 
----
-### 🐍 Python SDK
----
-## Install Python
+## 🐍 Python SDK
+
+### Install Python
 ```text
 cd dynotis_python_sdk
 
@@ -170,12 +158,12 @@ pip install -r requirements.txt
 pip install grpcio grpcio-tools protobuf
 
 ```
-## Generate Python SDK (from .proto)
+### Generate Python SDK (from .proto)
 ```text
 cd dynotis_python_sdk
 python build_sdk.py
 ```
-## Windows alternative:
+### Windows alternative:
 ```text
 dynotis_generate_python_sdk.bat
 ```
@@ -184,13 +172,13 @@ dynotis_generate_python_sdk.bat
 
 ✅ It also fixes the common relative-import issue in DynotisAPI_pb2_grpc.py.
 
-## Run Python Demo Scenario
+### Run Python Demo Scenario
 ```text
 cd dynotis_python_sdk
 python examples/full_test_scenario.py
 ```
 
-## Minimal Python Usage Example
+### Minimal Python Usage Example
 ```python
 from client import DynotisClient
 from generated import DynotisAPI_pb2
@@ -221,29 +209,28 @@ for msg in stream:
 
 ```
 
----
-### 🟨 JavaScript SDK (Node.js)
----
-## Install JavaScript
+## 🟨 JavaScript SDK (Node.js)
+
+### Install JavaScript
 ```text
 cd dynotis_javascript_sdk
 npm install
 ```
-## Generate JavaScript SDK (from .proto)
+### Generate JavaScript SDK (from .proto)
 ```text
 cd dynotis_javascript_sdk
 node build_sdk.js
 ```
-## Windows alternative:
+### Windows alternative:
 ```text
 dynotis_generate_javascript_sdk.bat
 ```
-## Run JavaScript Demo Scenario
+### Run JavaScript Demo Scenario
 ```text
 cd dynotis_javascript_sdk
 node examples/full_test_scenario.js
 ```
-## Minimal JavaScript Usage Example
+### Minimal JavaScript Usage Example
 ```javascript
 const { DynotisClient, messages } = require("./client");
 
@@ -296,7 +283,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-### 🧩 Proto & API Reference
+## 🧩 Proto & API Reference
 
 The full gRPC contract is defined in:
 
@@ -321,8 +308,8 @@ The full gRPC contract is defined in:
 
 > **🧩 Logging Note:** StartLogging/StopLogging currently require DataLoggerManager to be registered in the DI container as a **singleton** and injected into DynotisAPIService.
 
+## ⚙️ Telemetry Stream Notes
 
-### ⚙️ Telemetry Stream Notes
  * Typical stream rate: 50 Hz (PeriodicTimer(20ms))
  * Stream message includes:
    - sensors: thrust/torque/voltage/current/rpm/temps/accel/wind
@@ -332,7 +319,8 @@ The full gRPC contract is defined in:
 ✅ Expected behavior:
  * If the client cancels the stream, server may throw OperationCanceledException (*normal*).
 
-### 🧯 Troubleshooting
+## 🧯 Troubleshooting
+
 ❌ UNAVAILABLE: failed to connect to all addresses
 ✅ Checklist:
 * Dynotis Desktop running?
@@ -371,8 +359,8 @@ node build_sdk.js
  * Ensure the device is streaming sensor data in current mode
  * Try: Activate → wait ~1s → start stream
 
----
-### 🧪 Development & Contribution
+## 🧪 Development & Contribution
+
 **When** .proto **changes**
 
  **1**.Update Protos/DynotisAPI.proto
@@ -403,8 +391,8 @@ To support *StartLogging/StopLogging*:
 
  * Inject into *DynotisAPIService*
 
-
 ## ✅ Optional: C# gRPC Client Example
+
 ```C#
 using System;
 using System.Threading.Tasks;
