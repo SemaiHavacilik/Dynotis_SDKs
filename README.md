@@ -21,7 +21,7 @@ These SDKs connect to that server to:
 - Activate/deactivate a device connection
 - Control motor PWM (with software safety lock)
 - Configure limits & equipment parameters
-- Stream telemetry at a fixed rate (e.g., 50 Hz)
+- Stream telemetry at a fixed rate (e.g., 100 Hz)
 
 💡 **Important design detail:** The gRPC server injects **existing singleton services** from the WPF app (shared RAM/state), meaning the UI and API work on the same live device objects.
 
@@ -393,7 +393,7 @@ To support *StartLogging/StopLogging*:
 
 ## ✅ Optional: C# gRPC Client Example
 
-```C#
+```csharp
 using System;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
