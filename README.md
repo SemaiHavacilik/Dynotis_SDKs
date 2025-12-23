@@ -46,10 +46,55 @@ These SDKs connect to that server to:
 *   **Client:** SDKs act as gRPC Clients.
 *   **Endpoint:** Default is `localhost:50051` (HTTP/2).
 
+### ✅ System Architecture & Performance
+
+**High-Performance Embedded gRPC Server**  
+Unlike traditional test stands that rely on slow serial polling, Dynotis runs an embedded **ASP.NET Core Kestrel** server directly within the application process.
+
+*   **Zero-Latency State Synchronization:** The API injects the exact same Singleton services (`IDevicesManager`, `IBalancerService`) used by the WPF UI. A command sent via Python instantly updates the UI gauges.
+*   **HTTP/2 & Protobuf:** We utilize **HTTP/2** for multiplexing and **Protobuf** for compact binary serialization, ensuring minimal network overhead even at high telemetry rates (50Hz+).
+*   **Thread-Safe Operations:** All hardware commands are marshaled through thread-safe managers, preventing race conditions between manual UI control and automated API scripts.
+
+### 📡 Connection Modes & Shared State
+
+The Dynotis API operates on the **same memory space (Shared State)** as the desktop application. This means any change made via the API (e.g., `SetPWM`) instantly updates the UI gauges and vice versa.
+
+#### 1. Local Connection (Default)
+If your script and Dynotis Desktop are running on the same computer, use the default endpoint:
+*   **Endpoint:** `localhost:50051`
+
+#### 2. Network & Remote Lab Setup (Isolated Test Cell)
+
+Dynotis is designed for modern engineering labs where the test stand and the operator might be in different rooms.
+
+*   **PC A (Test Cell):** Runs Dynotis Desktop connected to the hardware via USB.
+    *   *Configuration:* Ensure Windows Firewall allows inbound TCP traffic on port `50051`.
+*   **PC B (Control Room):** Runs your Python/MATLAB/Node.js script.
+    *   *Connection:* `client = DynotisClient("192.168.1.50:50051")`
+
+> This setup protects the operator from noise and physical hazards while maintaining real-time control and data acquisition.
+
 > ⚠️ **SAFETY WARNING**
 >
 > Calling `UnlockMotor` + `SetPWM` **can spin the motor**.
 > Always secure the test rig and follow your lab safety procedures before running any code.
+
+## ⚠️ Safety First
+
+**Please read the following rules carefully before running any code:**
+
+1.  **Propeller-less Testing:** When developing a new script or testing the API for the first time, **never have a propeller installed** on the motor. Only install the propeller once you are 100% confident in your script's logic and limits.
+2.  **Hardware Lock:** The moment the `UnlockMotor` command is sent, the motor is live and ready to spin. Ensure physical safety measures (safety cage, protective eyewear) are in place.
+3.  **Emergency Stop:**
+    *   **Software:** The `client.EmergencyStop(device_request)` command immediately cuts power (PWM Min) and software-locks the motor (`IsLocked = true`).
+    *   **Physical:** Always have a physical Emergency Stop (E-Stop) button on your test rig in case of software freezes or network latency.
+
+### 🛡️ Hardware Protection Systems
+Dynotis enforces strict software-level safety interlocks to prevent accidents:
+
+1.  **Software Interlock (Motor Lock):** The API initializes with the motor in a `LOCKED` state. You must explicitly call `UnlockMotor()` before `SetPWM()` commands will be honored.
+2.  **Keep-Alive Monitoring:** If the telemetry stream or client connection drops, the system automatically cuts power (PWM Min) to prevent runaway scenarios.
+3.  **Emergency Stop (E-Stop):** The `EmergencyStop` RPC is a high-priority interrupt that immediately sets PWM to 0, engages the lock, and logs the event with a high-severity flag.
 
 ---
 
@@ -158,6 +203,20 @@ Dynotis_SDKs/
 *   Confirm API Status is Online ✅.
 *   Run SDK build scripts (only needed if .proto changed)
 *   Run an example test scenario to validate end-to-end communication
+
+## 🛠️ SDK Generation & Integration (Any Language)
+
+Dynotis is language-agnostic. While we provide examples for Python and Node.js, you can generate a client for **C++, C#, Go, Java, or Rust** using the standard Protobuf compiler.
+
+**Python Generation:**
+```bash
+python -m grpc_tools.protoc -I./Protos --python_out=./Client --grpc_python_out=./Client ./Protos/DynotisAPI.proto
+```
+
+**Node.js Generation:**
+```bash
+grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./Client --grpc_out=./Client --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` ./Protos/DynotisAPI.proto
+```
 
 ## 🐍 Python SDK
 
@@ -333,6 +392,18 @@ The full gRPC contract is defined in:
 ✅ Expected behavior:
  * If the client cancels the stream, server may throw OperationCanceledException (*normal*).
 
+## ⚙️ Real-Time Physics & Telemetry Engine
+
+Dynotis doesn't just stream raw sensor voltages. It includes an integrated **physics engine** that computes aerodynamic and electrical metrics on-the-fly, saving you from post-processing large datasets.
+
+**Streamed Metrics (50Hz Default):**
+*   **Raw Sensors:** Thrust (gf), Torque (Nmm), Voltage (V), Current (A), RPM, Vibration (g).
+*   **Aerodynamics:** Propeller Efficiency ($\eta_{prop}$), Advance Ratio ($J$), Tip Speed (Mach), Air Density ($\rho$).
+*   **Electrical:** Motor Efficiency, System Efficiency (g/W), Electrical Power vs. Mechanical Power.
+*   **Environment:** Ambient Temp, Pressure, Wind Speed/Direction.
+
+> *Data is streamed via server-side gRPC streaming, ensuring time-aligned snapshots of all sensors.*
+
 ## 🧯 Troubleshooting
 
 ❌ UNAVAILABLE: failed to connect to all addresses
@@ -373,6 +444,13 @@ node build_sdk.js
  * Ensure the device is streaming sensor data in current mode
  * Try: Activate → wait ~1s → start stream
 
+| Error Message / Issue | Possible Cause | Solution |
+| :--- | :--- | :--- |
+| **RPC Exception: Unavailable** | Dynotis Desktop is closed or Port is blocked. | Ensure the app is running. Allow port `50051` in Windows Firewall. |
+| **Stream Error (HTTP/2)** | Proxy or VPN usage. | gRPC requires HTTP/2. Disable VPN or add an exception for `localhost`. |
+| **Device Not Found** | Wrong COM port or device inactive. | Verify Device ID via `GetDeviceList` and ensure `ActivateDevice` is called. |
+| **Logging Error** | Service injection failure. | Ensure `DataLoggerManager` is registered as a Singleton in `App.xaml.cs`. |
+
 ## 🧪 Development & Contribution
 
 **When** .proto **changes**
@@ -391,12 +469,6 @@ python build_sdk.py
 cd dynotis_javascript_sdk
 node build_sdk.js
 ```
- ### Branch naming:
- * feature/<name>
-
- * fix/<name>
-
- * chore/<name>
 
  ### Logging (API support):
 To support *StartLogging/StopLogging*:
@@ -441,6 +513,58 @@ class Program
     }
 }
 ```
+
+## 💡 Common Usage Scenarios
+
+### Scenario 1: Ramp Up Test
+Safely start the motor and gradually increase RPM within a specific PWM range.
+
+```python
+import time
+# ... client initialization ...
+
+dev_id = "COM3" # Your Device ID
+
+# 1. Safety & Preparation
+client.activate_device(dev_id)
+client.set_limits(dev_id, max_current=40.0, max_temp=80.0) # Set safety limits
+client.tare_sensor(dev_id, SensorType.SENSOR_THRUST)       # Zero the thrust sensor
+
+# 2. Start Motor
+client.unlock_motor(dev_id)
+print("Motor Unlocked. Starting Test...")
+
+# 3. Ramp (1100 -> 1500 PWM)
+try:
+    for pwm in range(1100, 1501, 50):
+        client.set_pwm(dev_id, float(pwm))
+        print(f"PWM set to: {pwm}")
+        time.sleep(1.0) # Wait 1 second per step
+finally:
+    # 4. Safe Stop (Executes even if an error occurs)
+    client.set_pwm(dev_id, 1000.0) # Min PWM
+    client.lock_motor(dev_id)
+    print("Test Finished. Motor Locked.")
+```
+
+## 🤖 Coding with AI Assistant
+
+You can use ChatGPT, Claude, or GitHub Copilot to write Dynotis scripts quickly. Use the following prompt template to get accurate results:
+
+**Copy-Paste Prompt:**
+
+> "I am using the Dynotis gRPC API (Protobuf) for a drone motor test stand.
+> The client has methods like `SetPWM(device_id, value)`, `GetTelemetryStream(device_id)`, and `TareSensor(device_id, sensor_type)`.
+> The telemetry object has fields: `sensors.thrust_gf`, `sensors.torque_nmm`, `sensors.current_a`, `sensors.rpm`.
+>
+> Please write a Python script that:
+> 1. Connects to 'localhost:50051'.
+> 2. Activates the device named 'COM3'.
+> 3. Tares the Thrust and Torque sensors.
+> 4. Runs a step test: 1200 PWM for 5 seconds, then 1500 PWM for 5 seconds.
+> 5. Prints the average Thrust and Efficiency (g/W) for each step.
+> 6. Safely stops the motor at the end."
+
 
 <div align="center">
 
