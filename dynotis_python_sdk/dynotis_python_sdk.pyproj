@@ -31,6 +31,7 @@
     <Compile Include="examples\full_test_scenario.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="examples\gui_test_scenario.py" />
     <Compile Include="generated\DynotisAPI_pb2.py" />
     <Compile Include="generated\DynotisAPI_pb2_grpc.py" />
     <Compile Include="generated\__init__.py" />

@@ -103,6 +103,11 @@ class DynotisControllerStub(object):
                 request_serializer=DynotisAPI__pb2.DeviceRequest.SerializeToString,
                 response_deserializer=DynotisAPI__pb2.StatusResponse.FromString,
                 _registered_method=True)
+        self.SendHeartbeat = channel.unary_unary(
+                '/dynotis.DynotisController/SendHeartbeat',
+                request_serializer=DynotisAPI__pb2.HeartbeatRequest.SerializeToString,
+                response_deserializer=DynotisAPI__pb2.HeartbeatResponse.FromString,
+                _registered_method=True)
 
 
 class DynotisControllerServicer(object):
@@ -215,6 +220,13 @@ class DynotisControllerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SendHeartbeat(self, request, context):
+        """The watchdog must be called periodically to be fed.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DynotisControllerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -282,6 +294,11 @@ def add_DynotisControllerServicer_to_server(servicer, server):
                     servicer.StopLogging,
                     request_deserializer=DynotisAPI__pb2.DeviceRequest.FromString,
                     response_serializer=DynotisAPI__pb2.StatusResponse.SerializeToString,
+            ),
+            'SendHeartbeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendHeartbeat,
+                    request_deserializer=DynotisAPI__pb2.HeartbeatRequest.FromString,
+                    response_serializer=DynotisAPI__pb2.HeartbeatResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -639,6 +656,33 @@ class DynotisController(object):
             '/dynotis.DynotisController/StopLogging',
             DynotisAPI__pb2.DeviceRequest.SerializeToString,
             DynotisAPI__pb2.StatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SendHeartbeat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/dynotis.DynotisController/SendHeartbeat',
+            DynotisAPI__pb2.HeartbeatRequest.SerializeToString,
+            DynotisAPI__pb2.HeartbeatResponse.FromString,
             options,
             channel_credentials,
             insecure,

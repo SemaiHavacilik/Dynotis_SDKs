@@ -1,110 +1,108 @@
-const grpc = require('@grpc/grpc-js');
-const messages = require('./generated/DynotisAPI_pb');
-const services = require('./generated/DynotisAPI_grpc_pb');
+﻿const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+const path = require('path');
+
+// Proto dosyasının tam yolunu bul
+const PROTO_PATH = path.resolve(__dirname, '../Protos/DynotisAPI.proto');
+
+// Proto dosyasını yükle
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true
+});
+
+const dynotisProto = grpc.loadPackageDefinition(packageDefinition).dynotis;
 
 class DynotisClient {
     constructor(address = 'localhost:50051') {
-        this.client = new services.DynotisControllerClient(
+        this.client = new dynotisProto.DynotisController(
             address,
             grpc.credentials.createInsecure()
         );
+        this.heartbeatTimer = null;
     }
 
-    _promisify(method, request) {
+    // --- WATCHDOG / HEARTBEAT ---
+    _startHeartbeat(deviceId) {
+        if (this.heartbeatTimer) return;
+        this.heartbeatTimer = setInterval(() => {
+            this.client.SendHeartbeat({ device_identifier: deviceId }, (err) => {
+                if (err) console.error("Heartbeat failed:", err.message);
+            });
+        }, 400);
+    }
+
+    _stopHeartbeat() {
+        if (this.heartbeatTimer) {
+            clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = null;
+        }
+    }
+
+    // --- METOTLAR ---
+    async getDeviceList() {
         return new Promise((resolve, reject) => {
-            this.client[method](request, (err, response) => {
-                if (err) reject(err);
-                else resolve(response.toObject());
+            this.client.GetDeviceList({}, (err, response) => {
+                if (err) reject(err); else resolve(response);
             });
         });
     }
 
-    // --- CONNECTION ---
-    async getDeviceList() {
-        return this._promisify('getDeviceList', new messages.Empty());
-    }
-
     async activateDevice(deviceId) {
-        const req = new messages.DeviceRequest();
-        req.setDeviceIdentifier(deviceId);
-        return this._promisify('activateDevice', req);
+        return new Promise((resolve, reject) => {
+            this.client.ActivateDevice({ device_identifier: deviceId }, (err, response) => {
+                if (err) reject(err); else resolve(response);
+            });
+        });
     }
 
-    async deactivateDevice(deviceId) {
-        const req = new messages.DeviceRequest();
-        req.setDeviceIdentifier(deviceId);
-        return this._promisify('deactivateDevice', req);
-    }
-
-    // --- MOTOR CONTROL ---
     async setPWM(deviceId, pwmValue) {
-        const req = new messages.PwmRequest();
-        req.setDeviceIdentifier(deviceId);
-        req.setPwmValue(pwmValue);
-        return this._promisify('setPWM', req);
-    }
+        if (pwmValue > 1050) this._startHeartbeat(deviceId);
+        else this._stopHeartbeat();
 
-    async lockMotor(deviceId) {
-        const req = new messages.DeviceRequest();
-        req.setDeviceIdentifier(deviceId);
-        return this._promisify('lockMotor', req);
+        return new Promise((resolve, reject) => {
+            this.client.SetPWM({ device_identifier: deviceId, pwm_value: pwmValue }, (err, response) => {
+                if (err) reject(err); else resolve(response);
+            });
+        });
     }
 
     async unlockMotor(deviceId) {
-        const req = new messages.DeviceRequest();
-        req.setDeviceIdentifier(deviceId);
-        return this._promisify('unlockMotor', req);
+        return new Promise((resolve, reject) => {
+            this.client.UnlockMotor({ device_identifier: deviceId }, (err, response) => {
+                if (err) reject(err); else resolve(response);
+            });
+        });
     }
 
-    async emergencyStop(deviceId) {
-        const req = new messages.DeviceRequest();
-        req.setDeviceIdentifier(deviceId);
-        return this._promisify('emergencyStop', req);
+    async lockMotor(deviceId) {
+        this._stopHeartbeat();
+        return new Promise((resolve, reject) => {
+            this.client.LockMotor({ device_identifier: deviceId }, (err, response) => {
+                if (err) reject(err); else resolve(response);
+            });
+        });
     }
 
-    // --- SETTINGS ---
-    async setLimits(deviceId, { maxCurrent, maxRpm, maxTemp } = {}) {
-        const settings = new messages.LimitSettings();
-        settings.setIsEnabled(true);
-
-        if (maxCurrent !== undefined) {
-            settings.setEnableMaxCurrent(true);
-            settings.setMaxCurrentA(maxCurrent);
-        }
-        if (maxRpm !== undefined) {
-            settings.setEnableMaxRpm(true);
-            settings.setMaxRpm(maxRpm);
-        }
-        if (maxTemp !== undefined) {
-            settings.setEnableMaxMotorTemp(true);
-            settings.setMaxMotorTempC(maxTemp);
-        }
-
-        const req = new messages.LimitSettingsRequest();
-        req.setDeviceIdentifier(deviceId);
-        req.setSettings(settings);
-
-        return this._promisify('setLimitSettings', req);
+    async tareSensor(deviceId, sensorType) {
+        return new Promise((resolve, reject) => {
+            this.client.TareSensor({ device_identifier: deviceId, sensor_type: sensorType }, (err, response) => {
+                if (err) reject(err); else resolve(response);
+            });
+        });
     }
 
-    // --- OPERATIONS ---
-    async tareSensor(deviceId, sensorTypeEnum) {
-        const req = new messages.TareRequest();
-        req.setDeviceIdentifier(deviceId);
-        req.setSensorType(sensorTypeEnum);
-        return this._promisify('tareSensor', req);
-    }
-
-    // --- TELEMETRY ---
     getTelemetryStream(deviceId) {
-        const req = new messages.DeviceRequest();
-        req.setDeviceIdentifier(deviceId);
-        return this.client.getTelemetryStream(req);
+        return this.client.GetTelemetryStream({ device_identifier: deviceId });
     }
 
     close() {
+        this._stopHeartbeat();
         this.client.close();
     }
 }
 
-module.exports = { DynotisClient, messages };
+module.exports = { DynotisClient };

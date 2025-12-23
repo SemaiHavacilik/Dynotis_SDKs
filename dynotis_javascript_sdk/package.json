@@ -1,21 +1,9 @@
 {
-  "name": "dynotis_javascript_sdk",
+  "name": "dynotis-javascript-sdk",
   "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "eslint": "^9.39.2",
-    "grpc-tools": "^1.13.1"
-  },
+  "main": "index.js",
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.3",
-    "google-protobuf": "^4.0.1"
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.15"
   }
 }

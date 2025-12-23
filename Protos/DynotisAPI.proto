@@ -60,6 +60,9 @@ service DynotisController {
   
   // Stops the current recording session.
   rpc StopLogging (DeviceRequest) returns (StatusResponse);
+
+  // The watchdog must be called periodically to be fed.
+  rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
 }
 
 // ============================================================================
@@ -76,6 +79,19 @@ message StatusResponse {
 message DeviceRequest {
   // Unique identifier for the device (e.g., "COM3", "192.168.1.50").
   string device_identifier = 1;
+}
+
+// ============================================================================
+// HEARTBEAT MESSAGES
+// ============================================================================
+
+message HeartbeatRequest {
+  string device_identifier = 1;
+}
+
+message HeartbeatResponse {
+  bool watchdog_active = 1;
+  int64 server_time_ms = 2;
 }
 
 // ============================================================================
