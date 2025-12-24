@@ -28,16 +28,17 @@
 
 ## 📖 Overview
 
-The **Dynotis Desktop application** hosts an embedded **gRPC server** (HTTP/2).  
+The **Dynotis Desktop application** hosts an embedded **gRPC server** (HTTP/2). By leveraging these SDKs, you can automate complex test sequences, integrate Dynotis into your own lab software, and process real-time physics data externally.
+
 These SDKs connect to that server to:
 
 - Discover devices (Serial / Wi-Fi)
 - Activate/deactivate a device connection
 - Control motor PWM (with software safety lock)
 - Configure limits & equipment parameters
-- Stream telemetry at a fixed rate (e.g., 1000 Hz)
+- Stream telemetry at a fixed rate (e.g., 100 Hz)
 
-💡 **Important design detail:** The gRPC server injects **existing singleton services** from the UI app (shared RAM/state), meaning the UI and API work on the same live device objects.
+💡 **Important design detail:** The gRPC server injects **existing singleton services** from the UI app (shared RAM/state), meaning the UI and API work on the same live device objects. Any command sent via the SDK (e.g., SetPWM) is instantly reflected on the desktop application's gauges and charts in real-time.
 
 ---
 
@@ -52,7 +53,7 @@ These SDKs connect to that server to:
 Unlike traditional test stands that rely on slow serial polling, Dynotis runs an embedded **ASP.NET Core Kestrel** server directly within the application process.
 
 *   **Zero-Latency State Synchronization:** The API injects the exact same Singleton services (`IDevicesManager`, `IBalancerService`) used by the WPF UI. A command sent via Python instantly updates the UI gauges.
-*   **HTTP/2 & Protobuf:** We utilize **HTTP/2** for multiplexing and **Protobuf** for compact binary serialization, ensuring minimal network overhead even at high telemetry rates (50Hz+).
+*   **HTTP/2 & Protobuf:** We utilize **HTTP/2** for multiplexing and **Protobuf** for compact binary serialization, ensuring minimal network overhead even at high telemetry rates (100Hz+).
 *   **Thread-Safe Operations:** All hardware commands are marshaled through thread-safe managers, preventing race conditions between manual UI control and automated API scripts.
 
 ### 📡 Connection Modes & Shared State
@@ -63,6 +64,13 @@ The Dynotis API operates on the **same memory space (Shared State)** as the desk
 If your script and Dynotis Desktop are running on the same computer, use the default endpoint:
 *   **Endpoint:** `localhost:50051`
 
+```text
+// ✅ Required for h2c (unencrypted HTTP/2) endpoints like http://localhost:50051
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+```
+
+> **Note:** If the server uses http:// (no TLS), .NET requires enabling HTTP/2 unencrypted support.
+
 #### 2. Network & Remote Lab Setup (Isolated Test Cell)
 
 Dynotis is designed for modern engineering labs where the test stand and the operator might be in different rooms.
@@ -72,29 +80,123 @@ Dynotis is designed for modern engineering labs where the test stand and the ope
 *   **PC B (Control Room):** Runs your Python/MATLAB/Node.js script.
     *   *Connection:* `client = DynotisClient("192.168.1.50:50051")`
 
+---
+
+### 🌐 Remote Connection & Multi-PC Setup (PC1 Server / PC2 Client)
+Dynotis Desktop hosts an embedded **gRPC (HTTP/2) server**. In a remote lab setup, the Dynotis device is connected to **PC1 (Server)** while your automation scripts run on **PC2 (Client)** over the local network.
+#### PC1 — Server Configuration (Dynotis Desktop + Hardware)
+1. **Allow inbound traffic on TCP 50051**
+   - Open **Windows Defender Firewall with Advanced Security**
+   - Go to **Inbound Rules** → **New Rule...**
+   - Select **Port** → **TCP** → **Specific local ports:** `50051`
+   - Choose **Allow the connection**
+   - Enable profiles (**Domain / Private / Public**) as required by your lab network
+   - Name it: **Dynotis API (gRPC 50051)**
+
+2. **Enable Remote Connections in Dynotis**
+   - Go to **Settings → API Settings**
+   - Enable **Allow Remote Connections**
+   - Click **Apply & Restart API** to listen on all network interfaces
+
+**Find PC1 IP Address**
+
+On PC1, open CMD and run:
+```text
+ipconfig
+```
+
+Note the **IPv4 Address** under Wi-Fi/Ethernet (example: 192.168.1.122).
+
+#### PC2 — Client Configuration (Python / Node.js)
+
+Update the client target from `localhost` to the server IP:
+
+Python
+```python
+client = DynotisClient("192.168.1.122:50051")
+```
+
+Node.js
+```javascript
+const client = new DynotisClient("192.168.1.122:50051");
+```
+
+### Quick Connectivity Checks
+
+- **Ping test (PC2 → PC1):**
+```text
+ping 192.168.1.122
+```
+
+If you see **"No devices found"**, confirm the device is visible/active on PC1 inside Dynotis Desktop.
+
+Ensure TCP **50051** is not blocked or used by another service.
+
+**Security note:** Disable Allow Remote Connections when tests are finished, especially on public networks.
+
 > This setup protects the operator from noise and physical hazards while maintaining real-time control and data acquisition.
 
-> ⚠️ **SAFETY WARNING**
+> ⚠️ **SAFETY WARNING (CRITICAL)**
 >
-> Calling `UnlockMotor` + `SetPWM` **can spin the motor**.
-> Always secure the test rig and follow your lab safety procedures before running any code.
+> Calling `UnlockMotor()` followed by `SetPWM()` **can spin the motor immediately**.  
+> Always secure the test rig and follow your laboratory safety procedures **before running any code**.
+
+---
 
 ## ⚠️ Safety First
 
-**Please read the following rules carefully before running any code:**
+**Read and follow these rules before executing any script:**
 
-1.  **Propeller-less Testing:** When developing a new script or testing the API for the first time, **never have a propeller installed** on the motor. Only install the propeller once you are 100% confident in your script's logic and limits.
-2.  **Hardware Lock:** The moment the `UnlockMotor` command is sent, the motor is live and ready to spin. Ensure physical safety measures (safety cage, protective eyewear) are in place.
-3.  **Emergency Stop:**
-    *   **Software:** The `client.EmergencyStop(device_request)` command immediately cuts power (PWM Min) and software-locks the motor (`IsLocked = true`).
-    *   **Physical:** Always have a physical Emergency Stop (E-Stop) button on your test rig in case of software freezes or network latency.
+1. **Propeller-less Development (Mandatory)**  
+   When developing a new script or using the API for the first time, **never install a propeller**.  
+   Only install the propeller once you are **100% confident** in your control logic, limits, and stop conditions.
 
-### 🛡️ Hardware Protection Systems
-Dynotis enforces strict software-level safety interlocks to prevent accidents:
+2. **Motor Interlock / Live State**  
+   The system starts in a **LOCKED** state by design. The moment you call `UnlockMotor()`, the motor becomes **live** and ready to spin.  
+   Ensure the following are in place **before unlocking**:
+   - A rigidly secured test stand (no loose fasteners)
+   - A safety cage / protective barrier
+   - Protective eyewear and appropriate PPE
+   - A clear exclusion zone around rotating parts
 
-1.  **Software Interlock (Motor Lock):** The API initializes with the motor in a `LOCKED` state. You must explicitly call `UnlockMotor()` before `SetPWM()` commands will be honored.
-2.  **Keep-Alive Monitoring:** If the telemetry stream or client connection drops, the system automatically cuts power (PWM Min) to prevent runaway scenarios.
-3.  **Emergency Stop (E-Stop):** The `EmergencyStop` RPC is a high-priority interrupt that immediately sets PWM to 0, engages the lock, and logs the event with a high-severity flag.
+3. **Emergency Stop (E-Stop) — Always Available**
+   - **Software E-Stop:** `client.EmergencyStop(device_request)`  
+     Immediately sets PWM to **minimum**, engages the software lock (`IsLocked = true`), and logs the event with a high-severity flag.
+   - **Physical E-Stop (Required):**  
+     Always keep a physical E-Stop button within reach to handle software freezes, network latency, or unexpected behavior.
+
+---
+
+### 🛡️ Protection & Fail-Safe Systems
+
+Dynotis enforces software-level safety interlocks to reduce risk and prevent runaway scenarios:
+
+1. **Software Interlock (Motor Lock)**  
+   The API initializes with the motor in a `LOCKED` state.  
+   `SetPWM()` commands are **ignored** until `UnlockMotor()` is explicitly called.
+
+2. **Keep-Alive / Watchdog Monitoring**  
+   If the client connection or telemetry stream drops, the system automatically:
+   - Cuts output to **PWM minimum**
+   - Prevents uncontrolled spin-up due to stale commands
+
+3. **High-Priority Emergency Stop**
+   `EmergencyStop` is handled as a high-priority interrupt path that:
+   - Forces PWM to **minimum immediately**
+   - Engages the motor lock
+   - Records the event for traceability
+
+---
+
+### 🧯 Operator Safety Protocols (Recommended)
+
+Use this checklist as a minimum standard when running automated tests:
+
+1. **No propeller during initial development**; validate logic with the motor unloaded first.  
+2. **Unlock only when ready**; never unlock “early” or leave the system unlocked unattended.  
+3. **Validate limits** (PWM bounds, current/temperature constraints) before ramping up.  
+4. **Always implement a safe-exit path** (`try/finally`) that calls `EmergencyStop()` on failure.  
+5. **Keep a physical E-Stop within reach** at all times, regardless of software protections.
 
 ---
 
@@ -148,7 +250,7 @@ Dynotis enforces strict software-level safety interlocks to prevent accidents:
   - `Protos/DynotisAPI.proto`
 - Generated code lives under:
   - `dynotis_python_sdk/generated/`
-  - `dynotis_javascript_sdk/generated/`
+  - `JS uses runtime proto loading; no generated artifacts`
 
 ---
 
@@ -171,7 +273,60 @@ Dynotis enforces strict software-level safety interlocks to prevent accidents:
 - Dependencies:
   - `@grpc/grpc-js`
   - `google-protobuf`
-  - `grpc-tools`
+  - `@grpc/proto-loader`
+
+---
+
+## 🧠 SDK Technical Architecture (Python vs JavaScript)
+
+Dynotis is **language-agnostic**: all RPC methods and message types are defined in `DynotisAPI.proto`.  
+However, the **Python** and **JavaScript (Node.js)** SDKs consume this `.proto` contract using two different, industry-standard approaches.
+
+### 🐍 Python SDK — Static Code Generation
+
+Python uses **pre-generated** gRPC code. In this approach, the `.proto` file is compiled **before runtime**.
+
+**How it works:**
+- `build_sdk.py` / `.bat` runs `protoc`
+- Generates:
+  - `DynotisAPI_pb2.py` (message structures)
+  - `DynotisAPI_pb2_grpc.py` (service stubs)
+- Output is stored under the `generated/` folder
+
+**Why it’s useful:**
+- **Strong IDE autocomplete** and type hints
+- **No runtime parsing overhead**
+- Stable message classes and imports (consistent module structure)
+
+### 🟨 JavaScript SDK — Dynamic Proto Loading
+
+Node.js uses **runtime loading**, which is common in modern JS gRPC projects.
+
+**How it works:**
+- `@grpc/proto-loader` reads `DynotisAPI.proto` at startup
+- Creates service methods dynamically in memory (runtime-generated stubs)
+
+**Why there is no `generated/` folder:**
+- JavaScript does **not** require precompiled artifacts
+- Updating `.proto` usually requires **no rebuild** (restart is enough)
+- More portable across OS environments (avoids `protoc` / DLL issues)
+
+---
+
+### 📊 Comparison
+
+| Feature | Static | Dynamic |
+| :--- | :---: | :---: |
+| Approach | Pre-compiled | Runtime loading |
+| Needs `generated/` | ✅ Yes | ❌ No |
+| Proto update | Rebuild required | Usually just restart |
+| IDE support | Excellent | Medium (great with TS) |
+| Setup complexity | `grpcio-tools` needed | Simple, OS-friendly |
+
+---
+
+> **Developer note:** Both clients connect to the same Dynotis gRPC server and provide the same API capabilities and performance profile.  
+> Use **Python** for stronger typing and data workflows, and **Node.js** for plug-and-play automation and web-oriented stacks.
 
 ---
 
@@ -182,20 +337,14 @@ Dynotis_SDKs/
 ├── Protos/
 │   └── DynotisAPI.proto
 ├── dynotis_javascript_sdk/
-│   ├── examples/
-│   │   └── full_test_scenario.js
-│   ├── generated/
-│   ├── build_sdk.js
 │   ├── client.js
-│   ├── index.js
-│   └── dynotis_generate_javascript_sdk.bat
+│   ├── examples/full_test_scenario.js
+│   └── index.js
 └── dynotis_python_sdk/
-    ├── examples/
-    │   └── full_test_scenario.py
     ├── generated/
-    ├── build_sdk.py
     ├── client.py
-    └── dynotis_generate_python_sdk.bat
+    ├── build_sdk.py
+    └── examples/full_test_scenario.py
 ```
 
 ### ⚡ Quick Start SDK
@@ -289,10 +438,11 @@ for msg in stream:
 cd dynotis_javascript_sdk
 npm install
 ```
-### Generate JavaScript SDK (from .proto)
+### Generate JavaScript SDK (Runtime Proto Loading)
 ```text
-cd dynotis_javascript_sdk
-node build_sdk.js
+No code generation is required.
+The SDK loads `Protos/DynotisAPI.proto` at runtime using `@grpc/proto-loader`.
+If the `.proto` changes, simply restart the Node.js process.
 ```
 ### Windows alternative:
 ```text
@@ -375,7 +525,7 @@ The full gRPC contract is defined in:
 | `SetEquipmentParameters` | Sets prop diameter, motor resistance, etc. |
 | `SetLimitSettings` | Enables/configures safety limits (Max Current/Temp). |
 | `TareSensor` | Tares thrust, torque, current, or accelerometer. |
-| `GetTelemetryStream` | Server-side streaming telemetry (50Hz default). |
+| `GetTelemetryStream` | Server-side streaming telemetry (100Hz default). |
 | `StartLogging` | Starts logging (Requires DI wiring on server). |
 | `StopLogging` | Stops logging (Requires DI wiring on server). |
 
@@ -383,7 +533,7 @@ The full gRPC contract is defined in:
 
 ## ⚙️ Telemetry Stream Notes
 
- * Typical stream rate: 1000 Hz (PeriodicTimer(1ms))
+ * Typical stream rate: 100 Hz (PeriodicTimer(10ms))
  * Stream message includes:
    - sensors: thrust/torque/voltage/current/rpm/temps/accel/wind
    - theoretical: power, efficiencies, FOM, coefficients, etc.
@@ -396,7 +546,7 @@ The full gRPC contract is defined in:
 
 Dynotis doesn't just stream raw sensor voltages. It includes an integrated **physics engine** that computes aerodynamic and electrical metrics on-the-fly, saving you from post-processing large datasets.
 
-**Streamed Metrics (50Hz Default):**
+**Streamed Metrics (100Hz Default):**
 *   **Raw Sensors:** Thrust (gf), Torque (Nmm), Voltage (V), Current (A), RPM, Vibration (g).
 *   **Aerodynamics:** Propeller Efficiency ($\eta_{prop}$), Advance Ratio ($J$), Tip Speed (Mach), Air Density ($\rho$).
 *   **Electrical:** Motor Efficiency, System Efficiency (g/W), Electrical Power vs. Mechanical Power.
@@ -428,16 +578,39 @@ python build_sdk.py
  * generated/__init__.py exists
  * DynotisAPI_pb2_grpc.py contains: from . import DynotisAPI_pb2
 
-❌ **JavaScript:** Cannot find module ./generated/...
+❌ **JavaScript:** Proto load failed / Cannot find proto file
 
-### Run:
+### Symptoms
+- `Error: ENOENT: no such file or directory, open '.../DynotisAPI.proto'`
+- `Failed to load proto`
+- `Invalid include path`
+- `unimplemented` / `service not found` (yanlış proto veya paket adı)
+
+### Fix (Dynamic Proto Loading)
+1) **Dependencies**
 ```text
 cd dynotis_javascript_sdk
 npm install
-node build_sdk.js
 ```
+
+2) **Verify proto path**
+
+- Ensure the file exists: `Protos/DynotisAPI.proto`
+- Ensure your Node SDK points to the correct location (example):
+-- `../Protos/DynotisAPI.proto` (relative to `dynotis_javascript_sdk/`)
+
+3) **Restart**
+
+- No build step is required.
+- If `.proto` changed, **restart** the Node process:
+
+ ```text
+node examples/full_test_scenario.js
+```
+
 ### Confirm:
- * *generated/* folder exists and contains **_pb.js* files
+- There is **no** `generated/` folder in the Node.js SDK (expected).
+- The SDK loads `DynotisAPI.proto` at runtime via `@grpc/proto-loader`.
 
 **⚠️ Device list works but telemetry is always zero**
  * Ensure device is **activated**
